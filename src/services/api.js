@@ -2,9 +2,10 @@ import axios from 'axios';
 import router from '@/router';
 
 // Если задан VITE_API_BASE_URL, используем его (для Render/Vercel и др.),
-// иначе по умолчанию localhost для локальной разработки.
+// иначе по умолчанию localhost:54112 для локальной разработки.
+// Примечание: порт может меняться, настрой через .env.local
 const baseURL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:54112/api';
 
 const api = axios.create({
   baseURL,
