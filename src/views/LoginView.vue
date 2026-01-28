@@ -16,7 +16,13 @@
             <ellipse cx="33" cy="27" rx="2" ry="2.5" fill="#ffffff"/>
           </svg>
         </div>
-        <h1 class="center-name">ЦЕНТР ПАТОЛОГИИ РЕЧИ И НЕЙРОРЕАБИЛИТАЦИИ</h1>
+        <div class="header-text">
+          <div class="center-name-wrapper">
+            <h1 class="center-name">ЦЕНТР ПАТОЛОГИИ РЕЧИ</h1>
+            <h2 class="center-name-sub">И НЕЙРОРЕАБИЛИТАЦИИ</h2>
+          </div>
+          <p class="center-description">Система обучения и реабилитации<br>пациентов с нарушением речи</p>
+        </div>
       </div>
       <div class="header-right">
         <a href="tel:+79999999999" class="phone">+7 999 999-99-99</a>
@@ -219,44 +225,84 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 40px;
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 40px;
+  /* background: var(--gradient-primary); */
+  /* border-bottom: 1px solid rgba(0, 206, 209, 0.2); */
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
 }
 
 .logo {
   flex-shrink: 0;
 }
 
+.header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.center-name-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .center-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1e293b;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-primary);
   margin: 0;
-  line-height: 1.4;
-  max-width: 500px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+.center-name-sub {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-gray-700);
+  margin: 0;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.center-description {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  margin: 0;
+  line-height: 1.5;
 }
 
 .header-right {
   flex-shrink: 0;
+  margin-left: 24px;
 }
 
 .phone {
   font-size: 18px;
-  font-weight: 500;
-  color: #00CED1;
+  font-weight: 700;
+  color: var(--color-teal-light);
   text-decoration: none;
-  transition: color 0.2s;
+  transition: all var(--transition-base);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .phone:hover {
-  color: #00a8b0;
+  color: var(--color-teal-dark);
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
 }
 
 /* Main Content */
@@ -265,13 +311,16 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: var(--spacing-2xl) var(--spacing-md);
+  min-height: calc(100vh - 200px);
 }
 
 .login-container {
   width: 100%;
   max-width: 500px;
   text-align: center;
+  padding: var(--spacing-lg);
+  box-sizing: border-box;
 }
 
 .login-title {

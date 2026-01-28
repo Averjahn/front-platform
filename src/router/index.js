@@ -37,7 +37,7 @@ const routes = [
   {
     path: '/patient/assignments',
     name: 'patient-assignments',
-    component: DashboardView, // TODO: Создать отдельный компонент
+    component: () => import('@/views/PatientAssignmentsView.vue'),
     meta: { requiresAuth: true }
   },
   {
@@ -49,7 +49,13 @@ const routes = [
   {
     path: '/patient/achievements',
     name: 'patient-achievements',
-    component: DashboardView, // TODO: Создать отдельный компонент
+    component: () => import('@/views/PatientAchievementsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/patient/trainers',
+    name: 'patient-trainers',
+    component: () => import('@/views/PatientTrainersView.vue'),
     meta: { requiresAuth: true }
   },
   {
@@ -86,6 +92,42 @@ const routes = [
     path: '/doctor/patient/:id',
     name: 'doctor-patient-details',
     component: () => import('@/views/DoctorPatientDetailsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/patients',
+    name: 'admin-patients',
+    component: () => import('@/views/AdminPatientsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/patients/add',
+    name: 'admin-add-patient',
+    component: () => import('@/views/AdminAddPatientView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/appointments',
+    name: 'admin-appointments',
+    component: () => import('@/views/AdminAppointmentsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/documents',
+    name: 'admin-documents',
+    component: () => import('@/views/AdminDocumentsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/profile',
+    name: 'admin-profile',
+    component: () => import('@/views/AdminProfileView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/documents/patient/:patientId',
+    name: 'admin-patient-documents',
+    component: () => import('@/views/AdminPatientDocumentsView.vue'),
     meta: { requiresAuth: true }
   }
 ];

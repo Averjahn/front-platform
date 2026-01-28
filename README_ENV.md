@@ -5,7 +5,7 @@
 Создай файл `.env.local` в корне проекта `platform-front`:
 
 ```env
-VITE_API_BASE_URL=http://localhost:54112/api
+VITE_API_BASE_URL=http://localhost:3000/api
 ```
 
 **Важно**: `.env.local` уже в `.gitignore`, он не попадёт в репозиторий.

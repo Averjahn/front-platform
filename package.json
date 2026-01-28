@@ -9,6 +9,7 @@
     "lint": "echo \"No linter configured\""
   },
   "dependencies": {
+    "@vuepic/vue-datepicker": "^12.1.0",
     "axios": "^1.7.7",
     "vue": "^3.5.0",
     "vue-router": "^4.4.0"
@@ -18,4 +19,3 @@
     "vite": "^5.4.0"
   }
 }
-

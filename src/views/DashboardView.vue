@@ -95,7 +95,12 @@ export default {
 .view {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--spacing-lg);
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--spacing-xl) var(--spacing-lg);
+  box-sizing: border-box;
 }
 
 .dashboard-header {
@@ -109,33 +114,35 @@ export default {
 .view-title {
   font-size: 2rem;
   margin: 0;
-  color: #00CED1;
+  color: var(--color-teal-light);
   font-weight: 600;
 }
 
 .btn-secondary {
-  background: #ffffff;
-  border: 2px solid #ef4444;
-  color: #ef4444;
-  padding: 0.6rem 1.3rem;
-  border-radius: 8px;
+  background: var(--color-bg-primary);
+  border: 2px solid var(--color-error);
+  color: var(--color-error);
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   font-weight: 600;
-  transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
+  transition: all var(--transition-base);
+  font-size: 15px;
 }
 
 .btn-secondary:hover {
-  background: #ef4444;
-  color: #ffffff;
+  background: var(--color-error);
+  color: var(--color-text-inverse);
   transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
 }
 
 .card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 2rem;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
 }
 
 .card h2 {

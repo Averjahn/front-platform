@@ -163,12 +163,7 @@ export default {
 </script>
 
 <style scoped>
-.doctor-patients-page {
-  max-width: 100%;
-  margin: 0 auto;
-  padding: 40px 20px;
-  background: #ffffff;
-}
+/* Используем общие стили из common.css для .doctor-patients-page */
 
 .page-title {
   font-size: 32px;

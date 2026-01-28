@@ -1,5 +1,5 @@
 <template>
-  <div class="doctor-trainers-page">
+  <div class="patient-trainers-page">
     <h1 class="page-title">Каталог заданий</h1>
 
     <div v-if="loading" class="loading">Загрузка...</div>
@@ -28,6 +28,11 @@
       <div v-if="selectedSection" class="trainers-panel">
         <div class="trainers-header">
           <h3 class="trainers-list-title">{{ selectedSection }}. Тренажеры</h3>
+          <button v-if="selectedSection" @click="closeTrainersList" class="close-button" aria-label="Закрыть">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
         </div>
         
         <div v-if="loadingTrainers" class="loading-trainers">
@@ -88,7 +93,7 @@ import api from '@/services/api';
 import { useAuthStore } from '@/store/auth';
 
 export default {
-  name: 'DoctorTrainersView',
+  name: 'PatientTrainersView',
   setup() {
     const auth = useAuthStore();
     return { auth };
@@ -100,9 +105,11 @@ export default {
       selectedSection: null,
       selectedTrainer: null,
       iframeToken: null,
+      assignments: [], // Все назначения пациента
       loading: false,
       loadingTrainers: false,
       loadingToken: false,
+      loadingAssignment: false,
       error: null,
       trainerIframe: null
     };
@@ -115,33 +122,33 @@ export default {
       if (!this.selectedTrainer || !this.iframeToken) return '';
       
       const baseUrl = this.selectedTrainer.iframeUrl;
-      
-      // Базовый URL API берём из axios-инстанса (учитывает VITE_API_BASE_URL, туннели и т.п.)
-      // Если вдруг там ничего нет, по умолчанию используем локальный backend.
       const apiBaseUrl = api.defaults.baseURL || 'http://localhost:3000/api';
       
+      // Ищем назначение для этого конкретного тренажера
+      // Структура: assignment.trainer.id
+      const assignmentForTrainer = this.assignments.find(
+        a => a.trainer && a.trainer.id === this.selectedTrainer.id
+      );
+      
+      // Используем assignmentId для этого тренажера, если есть
+      // Иначе используем первое назначение или 'preview'
+      const assignmentId = assignmentForTrainer?.id || 
+                          (this.assignments.length > 0 ? this.assignments[0].id : null) || 
+                          'preview';
+      
       try {
-        // Пытаемся создать URL объект
         const url = new URL(baseUrl);
         
-        // Добавляем userId если есть пользователь
         if (this.user?.id) {
           url.searchParams.set('userId', this.user.id);
         }
         
-        // Добавляем токен
         url.searchParams.set('token', this.iframeToken);
-        
-        // Для режима просмотра врачом передаём специальный assignmentId
-        url.searchParams.set('assignmentId', 'preview');
-        
-        // Добавляем apiBaseUrl для v0 проекта
+        url.searchParams.set('assignmentId', assignmentId);
         url.searchParams.set('apiBaseUrl', apiBaseUrl);
         
         return url.toString();
       } catch (e) {
-        // Если baseUrl не является валидным URL, возвращаем как есть
-        // и добавляем параметры вручную
         const separator = baseUrl.includes('?') ? '&' : '?';
         const params = [];
         
@@ -150,7 +157,7 @@ export default {
         }
         
         params.push(`token=${this.iframeToken}`);
-        params.push('assignmentId=preview');
+        params.push(`assignmentId=${assignmentId}`);
         params.push(`apiBaseUrl=${encodeURIComponent(apiBaseUrl)}`);
         
         return `${baseUrl}${separator}${params.join('&')}`;
@@ -171,13 +178,37 @@ export default {
       }
     }
     
+    // Загружаем назначения пациента
+    await this.loadAssignments();
+    
+    // Загружаем разделы
     await this.loadSections();
+    
     // По умолчанию загружаем первую секцию
     if (this.sections.length > 0) {
       this.selectSection(this.sections[0]);
     }
   },
   methods: {
+    async loadAssignments() {
+      if (!this.user?.id) return;
+      
+      this.loadingAssignment = true;
+      try {
+        // Получаем назначения пациента (включая тренажеры)
+        // Используем /patient/trainers, который возвращает полную информацию о назначениях
+        const response = await api.get('/patient/trainers');
+        if (response.data && Array.isArray(response.data)) {
+          this.assignments = response.data;
+        }
+      } catch (err) {
+        console.error('Error loading assignments:', err);
+        // Не блокируем работу, если не удалось загрузить назначения
+        this.assignments = [];
+      } finally {
+        this.loadingAssignment = false;
+      }
+    },
     async loadSections() {
       this.loading = true;
       this.error = null;
@@ -208,8 +239,11 @@ export default {
         this.loadingTrainers = false;
       }
     },
+    closeTrainersList() {
+      this.selectedSection = null;
+      this.trainers = [];
+    },
     formatTrainerNumber(section, index) {
-      // Форматируем номер как "1.1.1", "1.1.2" и т.д.
       return `${section}.${index}`;
     },
     async openTrainer(trainer) {
@@ -219,40 +253,20 @@ export default {
       this.error = null;
       
       try {
-        console.log('Requesting iframe token...');
-        console.log('API base URL:', api.defaults.baseURL);
-        console.log('User:', this.user);
-        
         // Получаем токен для iframe
         const response = await api.post('/auth/iframe-token', {}, {
-          timeout: 15000, // Увеличиваем таймаут
+          timeout: 15000,
           withCredentials: true
         });
         
-        console.log('Iframe token response:', response);
-        
         if (response.data && response.data.token) {
           this.iframeToken = response.data.token;
-          console.log('Iframe token received:', this.iframeToken.substring(0, 20) + '...');
-          // Блокируем прокрутку страницы когда открыт модальный
           document.body.style.overflow = 'hidden';
         } else {
           throw new Error('Токен не получен от сервера');
         }
       } catch (err) {
         console.error('Error loading iframe token:', err);
-        console.error('Error details:', {
-          status: err?.response?.status,
-          statusText: err?.response?.statusText,
-          data: err?.response?.data,
-          message: err?.message,
-          code: err?.code,
-          config: {
-            url: err?.config?.url,
-            method: err?.config?.method,
-            baseURL: err?.config?.baseURL
-          }
-        });
         
         let errorMessage = 'Ошибка загрузки токена для iframe';
         
@@ -280,26 +294,24 @@ export default {
     closeTrainer() {
       this.selectedTrainer = null;
       this.iframeToken = null;
-      // Восстанавливаем прокрутку
       document.body.style.overflow = '';
     },
     onIframeLoad() {
-      // Отправляем параметры через postMessage после загрузки iframe
       if (this.$refs.trainerIframe && this.iframeToken && this.user) {
         const iframeWindow = this.$refs.trainerIframe.contentWindow;
         if (iframeWindow) {
-          // Получаем apiBaseUrl из iframeUrl
           try {
             const url = new URL(this.iframeUrl);
             const apiBaseUrl = url.searchParams.get('apiBaseUrl') || api.defaults.baseURL;
+            const assignmentId = url.searchParams.get('assignmentId') || 'preview';
             
             iframeWindow.postMessage({
               type: 'INIT_PARAMS',
               token: this.iframeToken,
               userId: this.user.id,
-              assignmentId: 'preview',
+              assignmentId: assignmentId,
               apiBaseUrl: apiBaseUrl
-            }, '*'); // В production замени '*' на конкретный origin v0 проекта
+            }, '*');
           } catch (e) {
             console.warn('Не удалось отправить параметры через postMessage:', e);
           }
@@ -308,38 +320,34 @@ export default {
     }
   },
   beforeUnmount() {
-    // Восстанавливаем прокрутку при размонтировании компонента
     document.body.style.overflow = '';
   }
 };
 </script>
 
 <style scoped>
-/* Используем общие стили из common.css для .doctor-trainers-page */
+/* Используем общие стили из common.css для .patient-trainers-page */
 
-.page-title {
-  font-size: 32px;
-  font-weight: 600;
-  color: #00CED1;
-  text-align: center;
-  margin: 0 0 40px 0;
-}
+/* .page-title - используем общие стили из common.css */
 
 .loading,
 .error-message {
   text-align: center;
-  padding: 20px;
-  color: #6b7280;
+  padding: var(--spacing-lg);
+  color: var(--color-text-tertiary);
 }
 
 .error-message {
-  color: #ef4444;
+  color: var(--color-error-dark);
+  background: var(--color-error-50);
+  border: 1px solid var(--color-error-light);
+  border-radius: var(--radius-md);
 }
 
 .trainers-content {
   display: grid;
   grid-template-columns: 300px 1fr;
-  gap: 40px;
+  gap: var(--spacing-2xl);
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -357,14 +365,14 @@ export default {
 .sections-title {
   font-size: 20px;
   font-weight: 600;
-  color: #1e293b;
-  margin: 0 0 12px 0;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-sm) 0;
 }
 
 .sections-subtitle {
   font-size: 14px;
-  color: #6b7280;
-  margin: 0 0 24px 0;
+  color: var(--color-text-tertiary);
+  margin: 0 0 var(--spacing-lg) 0;
   line-height: 1.5;
 }
 
@@ -374,7 +382,7 @@ export default {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .section-item {
@@ -415,16 +423,45 @@ export default {
 }
 
 .trainers-header {
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 2px solid var(--color-border);
 }
 
 .trainers-list-title {
   font-size: 24px;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--color-text-primary);
   margin: 0;
+}
+
+.close-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  padding: 0;
+}
+
+.close-button:hover {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-border-dark);
+  color: var(--color-text-primary);
+}
+
+.close-button svg {
+  width: 20px;
+  height: 20px;
 }
 
 .trainers-panel-empty {
@@ -436,15 +473,15 @@ export default {
 
 .empty-message {
   font-size: 16px;
-  color: #6b7280;
+  color: var(--color-text-tertiary);
   text-align: center;
   margin: 0;
 }
 
 .loading-trainers {
   text-align: center;
-  padding: 40px 20px;
-  color: #6b7280;
+  padding: var(--spacing-2xl) var(--spacing-md);
+  color: var(--color-text-tertiary);
 }
 
 .loading-trainers p {
@@ -454,8 +491,8 @@ export default {
 
 .no-trainers {
   text-align: center;
-  padding: 60px 20px;
-  color: #6b7280;
+  padding: var(--spacing-2xl) var(--spacing-md);
+  color: var(--color-text-tertiary);
 }
 
 .no-trainers p {
@@ -469,88 +506,40 @@ export default {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md);
 }
 
 .trainer-item {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
   cursor: pointer;
 }
 
 .trainer-item:hover {
-  background: #f9fafb;
-  border-color: #00CED1;
-  box-shadow: 0 2px 4px rgba(0, 206, 209, 0.1);
+  background: var(--color-bg-secondary);
+  border-color: var(--color-teal-light);
+  box-shadow: var(--shadow-sm);
   transform: translateY(-1px);
 }
 
 .trainer-number {
   font-size: 15px;
   font-weight: 600;
-  color: #ef4444;
+  color: var(--color-error);
   min-width: 80px;
 }
 
 .trainer-title {
   font-size: 15px;
-  color: #1e293b;
+  color: var(--color-text-primary);
   line-height: 1.5;
   flex: 1;
-}
-
-@media (max-width: 1200px) {
-  .trainers-content {
-    grid-template-columns: 250px 1fr;
-    gap: 30px;
-  }
-}
-
-@media (max-width: 768px) {
-  .doctor-trainers-page {
-    padding: 20px 16px;
-  }
-
-  .page-title {
-    font-size: 24px;
-    margin-bottom: 24px;
-  }
-
-  .trainers-content {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
-
-  .sections-panel {
-    padding: 20px;
-  }
-
-  .trainers-panel {
-    padding: 20px;
-  }
-
-  .trainers-list-title {
-    font-size: 20px;
-  }
-
-  .trainer-item {
-    padding: 12px 16px;
-  }
-
-  .trainer-number {
-    font-size: 14px;
-    min-width: 60px;
-  }
-
-  .trainer-title {
-    font-size: 14px;
-  }
 }
 
 /* Iframe Modal */
@@ -565,7 +554,7 @@ export default {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 20px;
+  padding: var(--spacing-md);
 }
 
 .iframe-container {
@@ -574,35 +563,35 @@ export default {
   max-width: 1400px;
   height: 90vh;
   max-height: 900px;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
 }
 
 .close-iframe-button {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
   width: 40px;
   height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  color: #1e293b;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
   cursor: pointer;
   z-index: 1001;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-md);
 }
 
 .close-iframe-button:hover {
-  background: #ffffff;
-  border-color: #ef4444;
-  color: #ef4444;
+  background: var(--color-bg-primary);
+  border-color: var(--color-error);
+  color: var(--color-error);
   transform: scale(1.05);
 }
 
@@ -612,7 +601,7 @@ export default {
   justify-content: center;
   width: 100%;
   height: 100%;
-  color: #6b7280;
+  color: var(--color-text-tertiary);
   font-size: 16px;
 }
 
@@ -623,7 +612,49 @@ export default {
   display: block;
 }
 
+@media (max-width: 1200px) {
+  .trainers-content {
+    grid-template-columns: 250px 1fr;
+    gap: var(--spacing-xl);
+  }
+}
+
 @media (max-width: 768px) {
+  .patient-trainers-page {
+    padding: var(--spacing-md) var(--spacing-md);
+  }
+
+
+  .trainers-content {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+  }
+
+  .sections-panel {
+    padding: var(--spacing-md);
+  }
+
+  .trainers-panel {
+    padding: var(--spacing-md);
+  }
+
+  .trainers-list-title {
+    font-size: 20px;
+  }
+
+  .trainer-item {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  .trainer-number {
+    font-size: 14px;
+    min-width: 60px;
+  }
+
+  .trainer-title {
+    font-size: 14px;
+  }
+
   .iframe-modal {
     padding: 0;
   }
@@ -636,8 +667,8 @@ export default {
   }
 
   .close-iframe-button {
-    top: 12px;
-    right: 12px;
+    top: var(--spacing-sm);
+    right: var(--spacing-sm);
     width: 36px;
     height: 36px;
   }

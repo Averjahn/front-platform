@@ -179,6 +179,40 @@
           </div>
         </div>
       </div>
+
+      <!-- Patient Diary Section -->
+      <div class="diary-section">
+        <h3 class="section-title diary-title">Дневник пациента</h3>
+        <div v-if="loadingDiary" class="loading">Загрузка дневника...</div>
+        <div v-else-if="diaryError" class="error-message">{{ diaryError }}</div>
+        <div v-else-if="diaryEntries.length === 0" class="no-diary">
+          <p>У пациента пока нет записей в дневнике</p>
+        </div>
+        <div v-else class="diary-entries">
+          <div v-for="entry in diaryEntries" :key="entry.id" class="diary-entry">
+            <div class="diary-entry-header">
+              <span class="diary-entry-date">{{ formatDate(entry.date) }}</span>
+              <div class="diary-entry-meta">
+                <span class="diary-meta-item">
+                  <span class="meta-label">Погода:</span>
+                  <span class="meta-value">{{ entry.weather }}</span>
+                </span>
+                <span class="diary-meta-item">
+                  <span class="meta-label">Настроение:</span>
+                  <span class="meta-value">{{ entry.mood }}</span>
+                </span>
+                <span class="diary-meta-item">
+                  <span class="meta-label">Самочувствие:</span>
+                  <span class="meta-value">{{ entry.wellbeing }}</span>
+                </span>
+              </div>
+            </div>
+            <div class="diary-entry-content">
+              <p class="diary-text">{{ entry.content }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -196,6 +230,9 @@ export default {
       testSessions: [],
       recommendations: [],
       notes: [],
+      diaryEntries: [],
+      loadingDiary: false,
+      diaryError: null,
       newRecommendation: '',
       newNote: '',
       editingRecommendation: null,
@@ -251,11 +288,28 @@ export default {
         
         // Загружаем рекомендации и заметки из medicalData
         this.loadRecommendationsAndNotes();
+        
+        // Загружаем дневник пациента
+        await this.loadPatientDiary(patientId);
       } catch (err) {
         this.error = err?.response?.data?.message || 'Ошибка загрузки данных пациента';
         console.error('Error loading patient data:', err);
       } finally {
         this.loading = false;
+      }
+    },
+    async loadPatientDiary(patientId) {
+      this.loadingDiary = true;
+      this.diaryError = null;
+      
+      try {
+        const response = await api.get(`/doctor/patient/${patientId}/diary`);
+        this.diaryEntries = response.data || [];
+      } catch (err) {
+        this.diaryError = err?.response?.data?.message || 'Ошибка загрузки дневника';
+        console.error('Error loading patient diary:', err);
+      } finally {
+        this.loadingDiary = false;
       }
     },
     loadRecommendationsAndNotes() {
@@ -409,16 +463,18 @@ export default {
 
 <style scoped>
 .patient-details-page {
-  max-width: 100%;
+  width: 100%;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 40px 20px;
-  background: #ffffff;
+  padding: var(--spacing-xl) var(--spacing-2xl);
+  background: transparent;
+  box-sizing: border-box;
 }
 
 .page-title {
   font-size: 32px;
   font-weight: 600;
-  color: #00CED1;
+  color: var(--color-teal-light);
   text-align: center;
   margin: 0 0 40px 0;
 }
@@ -437,18 +493,19 @@ export default {
 .patient-content {
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: var(--spacing-2xl);
 }
 
 /* Patient Info Section */
 .patient-info-section {
   display: flex;
-  gap: 30px;
+  gap: var(--spacing-xl);
   align-items: flex-start;
-  padding: 30px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  padding: var(--spacing-xl);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .patient-photo {
@@ -511,7 +568,12 @@ export default {
 .test-results-section {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--spacing-md);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .section-title {
@@ -538,17 +600,18 @@ export default {
 }
 
 .test-results-table thead {
-  background: #00CED1;
+  background: var(--color-bg-secondary);
 }
 
 .test-results-table th {
-  padding: 16px 18px;
+  padding: 12px 16px;
   text-align: left;
   font-weight: 600;
-  color: #ffffff;
-  font-size: 15px;
-  letter-spacing: 0.3px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--color-border);
   white-space: nowrap;
 }
 
@@ -606,18 +669,19 @@ export default {
 .recommendations-notes-section {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 30px;
+  gap: var(--spacing-xl);
 }
 
 .recommendations-panel,
 .notes-panel {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 24px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-primary);
+  box-shadow: var(--shadow-sm);
 }
 
 .panel-title {
@@ -627,11 +691,15 @@ export default {
 }
 
 .recommendations-title {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 .notes-title {
-  color: #00CED1;
+  color: var(--color-teal-light);
+}
+
+.diary-title {
+  color: var(--color-primary);
 }
 
 .current-entry {
@@ -784,23 +852,116 @@ export default {
 }
 
 .recommendations-button {
-  color: #ef4444;
-  border-color: #ef4444;
+  color: var(--color-error);
+  border-color: var(--color-error);
 }
 
 .recommendations-button:hover:not(:disabled) {
-  background: #ef4444;
-  color: #ffffff;
+  background: var(--color-error);
+  color: var(--color-text-inverse);
 }
 
 .notes-button {
-  color: #00CED1;
-  border-color: #00CED1;
+  color: var(--color-teal-light);
+  border-color: var(--color-teal-light);
 }
 
 .notes-button:hover:not(:disabled) {
-  background: #00CED1;
-  color: #ffffff;
+  background: var(--color-teal-light);
+  color: var(--color-text-inverse);
+}
+
+/* Diary Section */
+.diary-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-primary);
+}
+
+.diary-title {
+  color: var(--color-primary);
+}
+
+.no-diary {
+  padding: var(--spacing-2xl);
+  text-align: center;
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.diary-entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.diary-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.diary-entry:hover {
+  background: var(--color-bg-tertiary);
+  box-shadow: var(--shadow-sm);
+}
+
+.diary-entry-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.diary-entry-date {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.diary-entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.diary-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.meta-label {
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+}
+
+.meta-value {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.diary-entry-content {
+  padding-top: 12px;
+}
+
+.diary-text {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+  font-size: 15px;
 }
 
 @media (max-width: 1200px) {

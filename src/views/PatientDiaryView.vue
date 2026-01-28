@@ -1,5 +1,5 @@
 <template>
-  <div class="diary-page">
+  <div class="patient-diary-page">
     <h1 class="page-title">Мой дневник</h1>
 
     <!-- Previous Entry Section -->
@@ -193,31 +193,19 @@ export default {
 </script>
 
 <style scoped>
-.diary-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 40px 20px;
-  background: #ffffff;
-}
-
-.page-title {
-  font-size: 32px;
-  font-weight: 600;
-  color: #00CED1;
-  text-align: center;
-  margin: 0 0 40px 0;
-}
+/* Используем общие стили из common.css для .patient-diary-page */
 
 /* Previous Entry Section */
 .previous-entry {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 30px;
-  margin-bottom: 40px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  margin-bottom: var(--spacing-2xl);
   display: grid;
   grid-template-columns: 300px 1fr;
-  gap: 40px;
+  gap: var(--spacing-2xl);
+  box-shadow: var(--shadow-sm);
 }
 
 .entry-date-section {
@@ -275,12 +263,13 @@ export default {
 
 /* New Entry Section */
 .new-entry-section {
-  background: #00CED1;
-  border-radius: 8px;
-  padding: 30px;
+  background: var(--color-teal-light);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--spacing-lg);
+  box-shadow: var(--shadow-md);
 }
 
 .section-title {

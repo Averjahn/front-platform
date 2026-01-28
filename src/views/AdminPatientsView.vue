@@ -136,7 +136,7 @@ export default {
       this.error = null;
 
       try {
-        const response = await api.get('/admin/patients');
+        const response = await api.get('/patients');
         this.patients = response.data || [];
       } catch (err) {
         this.error = err?.response?.data?.message || 'Ошибка загрузки списка пациентов';
@@ -152,17 +152,18 @@ export default {
     },
     getDoctorName(patient) {
       // Получаем имя первого врача из связей
-      if (patient.doctors && patient.doctors.length > 0) {
+      if (patient.doctors && Array.isArray(patient.doctors) && patient.doctors.length > 0) {
         const doctor = patient.doctors[0].doctor;
         if (doctor && doctor.user) {
-          return doctor.user.lastName || 'Не указано';
+          const parts = [doctor.user.lastName, doctor.user.firstName, doctor.user.middleName].filter(Boolean);
+          return parts.join(' ') || 'Не указано';
         }
       }
       return 'Не назначен';
     },
     getTreatmentStartDate(patient) {
       // Дата начала лечения - дата создания первого назначения или дата создания пациента
-      if (patient.assignments && patient.assignments.length > 0) {
+      if (patient.assignments && Array.isArray(patient.assignments) && patient.assignments.length > 0) {
         const dates = patient.assignments.map(a => new Date(a.createdAt)).sort((a, b) => a - b);
         return dates[0];
       }
@@ -170,12 +171,14 @@ export default {
     },
     getLastAppointmentDate(patient) {
       // Дата последнего приема - дата последней сессии теста
-      if (patient.assignments && patient.assignments.length > 0) {
+      if (patient.assignments && Array.isArray(patient.assignments) && patient.assignments.length > 0) {
         const allSessions = [];
         patient.assignments.forEach(assignment => {
-          if (assignment.sessions && assignment.sessions.length > 0) {
+          if (assignment.sessions && Array.isArray(assignment.sessions) && assignment.sessions.length > 0) {
             assignment.sessions.forEach(session => {
-              allSessions.push(new Date(session.startedAt));
+              if (session.startedAt) {
+                allSessions.push(new Date(session.startedAt));
+              }
             });
           }
         });
@@ -209,141 +212,84 @@ export default {
 </script>
 
 <style scoped>
-.admin-patients-page {
-  padding: 30px 40px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.page-title {
-  font-size: 32px;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0 0 30px 0;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 30px;
-}
+/* Используем общие стили из common.css для .action-buttons */
 
 .btn-add-patient,
 .btn-appointment {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 24px;
-  border-radius: 8px;
-  font-size: 16px;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: 12px 24px;
+  font-size: 15px;
   font-weight: 600;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-base);
   border: 2px solid;
+  white-space: nowrap;
 }
 
 .btn-add-patient {
-  background: #ffffff;
-  border-color: #ef4444;
-  color: #475569;
+  background: var(--color-bg-primary);
+  border-color: var(--color-error);
+  color: var(--color-error);
 }
 
 .btn-add-patient svg {
-  stroke: #ef4444;
+  stroke: var(--color-error);
   stroke-width: 2;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .btn-add-patient:hover {
-  background: #fef2f2;
-  border-color: #dc2626;
+  background: var(--color-error-50);
+  border-color: var(--color-error-dark);
+  color: var(--color-error-dark);
+  transform: translateY(-1px);
 }
 
 .btn-appointment {
-  background: #ffffff;
-  border-color: #00CED1;
-  color: #475569;
+  background: var(--color-bg-primary);
+  border-color: var(--color-teal-light);
+  color: var(--color-teal-light);
 }
 
 .btn-appointment svg {
-  stroke: #00CED1;
+  stroke: var(--color-teal-light);
   stroke-width: 2;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .btn-appointment:hover {
-  background: #f0fdfd;
-  border-color: #00a8b0;
+  background: var(--color-teal-50);
+  border-color: var(--color-teal-dark);
+  color: var(--color-teal-dark);
+  transform: translateY(-1px);
 }
 
-.filter-tabs {
-  display: flex;
-  gap: 0;
-  margin-bottom: 30px;
-  border-bottom: 2px solid #e5e7eb;
-}
+/* Используем общие стили из common.css для .filter-tabs и .tab-button */
 
-.tab-button {
-  padding: 12px 24px;
-  background: transparent;
-  border: none;
-  border-bottom: 3px solid transparent;
-  color: #6b7280;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-bottom: -2px;
-}
+/* Используем общие стили из common.css */
 
-.tab-button:hover {
-  color: #1e293b;
-  background: #f9fafb;
-}
-
-.tab-active {
-  color: #1e293b;
-  border-bottom-color: #FF8C00;
-  font-weight: 600;
-}
-
-.loading,
-.error-message {
-  padding: 20px;
-  text-align: center;
-  font-size: 16px;
-}
-
-.error-message {
-  color: #ef4444;
-}
-
-.patients-table-container {
-  width: 100%;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.patients-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #ffffff;
-  table-layout: auto;
-}
+/* Используем общие стили из common.css для .patients-table-container и .patients-table */
 
 .patients-table thead {
-  background: #00CED1;
+  background: #f8fafc;
 }
 
 .patients-table th {
-  padding: 18px 20px;
+  padding: 12px 16px;
   text-align: left;
   font-weight: 600;
-  color: #ffffff;
-  font-size: 15px;
-  letter-spacing: 0.3px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  color: #475569;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   white-space: nowrap;
 }
 
@@ -365,21 +311,21 @@ export default {
 }
 
 .patients-table tbody tr:hover {
-  background: #f0fdfd;
+  background: #f8fafc;
 }
 
 .patients-table tbody tr.row-even {
-  background: #f9fafb;
+  background: #fafbfc;
 }
 
 .patients-table tbody tr.row-even:hover {
-  background: #f0fdfd;
+  background: #f1f5f9;
 }
 
 .patients-table td {
-  padding: 18px 20px;
+  padding: 14px 16px;
   color: #1e293b;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -426,21 +372,21 @@ export default {
 }
 
 .details-button {
-  padding: 10px 20px;
-  background: #ffffff;
-  color: #00CED1;
-  border: 2px solid #00CED1;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 8px 16px;
+  background: #FF8C00;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .details-button:hover {
-  background: #f0fdfd;
-  border-color: #00a8b0;
-  color: #00a8b0;
+  background: #e67e00;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(255, 140, 0, 0.3);
 }
 
 .no-patients {

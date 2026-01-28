@@ -65,7 +65,7 @@ export default {
 
 <style scoped>
 .navbar {
-  position: sticky;
+  /* position: sticky; */
   top: 0;
   z-index: 10;
   background: #ffffff;

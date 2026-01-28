@@ -1,6 +1,14 @@
 <template>
   <div class="patient-profile-page">
-    <h1 class="page-title">Мой профиль</h1>
+    <div class="profile-header">
+      <h1 class="page-title">Мой профиль</h1>
+      <button @click="handleLogout" class="btn btn-logout">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M7 17L2 12M2 12L7 7M2 12H18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Выйти
+      </button>
+    </div>
 
     <div class="profile-content">
       <!-- Left Column: Patient Info -->
@@ -9,7 +17,7 @@
           <div class="profile-image-wrapper">
             <img
               v-if="profileData?.avatarUrl"
-              :src="profileData.avatarUrl"
+              :src="getAvatarUrl(profileData.avatarUrl)"
               :alt="fullName"
               class="profile-image"
             />
@@ -88,6 +96,14 @@
       @tariff-selected="handleTariffSelected"
     />
 
+    <!-- Edit Profile Modal -->
+    <EditProfileModal
+      :is-open="showEditProfileModal"
+      :profile-data="profileData"
+      @close="showEditProfileModal = false"
+      @profile-updated="handleProfileUpdated"
+    />
+
     <!-- Doctor Section -->
     <div class="doctor-section">
       <h3 class="section-title">Мой лечащий врач:</h3>
@@ -95,7 +111,7 @@
         <div class="doctor-image-wrapper">
           <img
             v-if="doctor.avatarUrl"
-            :src="doctor.avatarUrl"
+            :src="getAvatarUrl(doctor.avatarUrl)"
             :alt="doctorName"
             class="doctor-image"
           />
@@ -122,13 +138,22 @@
 </template>
 
 <script>
+import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import TariffModal from '@/components/TariffModal.vue';
+import EditProfileModal from '@/components/EditProfileModal.vue';
+import { useAuthStore } from '@/store/auth';
 
 export default {
   name: 'PatientProfileView',
   components: {
     TariffModal,
+    EditProfileModal,
+  },
+  setup() {
+    const router = useRouter();
+    const auth = useAuthStore();
+    return { router, auth };
   },
   data() {
     return {
@@ -189,9 +214,18 @@ export default {
     formatPrice(price) {
       return new Intl.NumberFormat('ru-RU').format(price);
     },
+    getAvatarUrl(avatarUrl) {
+      if (!avatarUrl) return '';
+      if (avatarUrl.startsWith('http')) return avatarUrl;
+      const apiBaseUrl = api.defaults.baseURL || 'http://localhost:3000/api';
+      return `${apiBaseUrl.replace('/api', '')}${avatarUrl}`;
+    },
     editProfile() {
-      // TODO: Реализовать редактирование профиля
-      console.log('Edit profile');
+      this.showEditProfileModal = true;
+    },
+    async handleProfileUpdated() {
+      // Перезагружаем профиль после обновления
+      await this.loadProfile();
     },
     viewTariffs() {
       // Проверяем авторизацию перед открытием модального окна
@@ -221,38 +255,87 @@ export default {
     requestConsultation() {
       // TODO: Реализовать запрос консультации
       console.log('Request consultation');
+    },
+    async handleLogout() {
+      try {
+        await api.post('/auth/logout');
+      } catch (err) {
+        console.error('Ошибка при выходе:', err);
+      } finally {
+        this.auth.clearUser();
+        localStorage.removeItem('user');
+        this.router.push('/login');
+      }
     }
   }
 };
 </script>
 
 <style scoped>
-.patient-profile-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 40px 20px;
-  background: #ffffff;
+/* Используем общие стили из common.css для .patient-profile-page */
+
+.profile-header {
+  position: relative;
+  margin-bottom: var(--spacing-xl);
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.page-title {
-  font-size: 32px;
+.profile-header .page-title {
+  margin: 0;
+}
+
+.btn-logout {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* .page-title - используем общие стили из common.css */
+
+.btn-logout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #ffffff;
+  border: 2px solid #ef4444;
+  color: #ef4444;
+  border-radius: 8px;
+  font-size: 16px;
   font-weight: 600;
-  color: #00CED1;
-  text-align: center;
-  margin: 0 0 40px 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-logout svg {
+  stroke: #ef4444;
+}
+
+.btn-logout:hover {
+  background: #ef4444;
+  color: #ffffff;
+  transform: translateY(-50%) translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+.btn-logout:hover svg {
+  stroke: #ffffff;
 }
 
 .profile-content {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 40px;
-  margin-bottom: 60px;
+  gap: var(--spacing-2xl);
+  margin-bottom: var(--spacing-2xl);
 }
 
 .profile-left {
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: var(--spacing-xl);
 }
 
 .profile-image-section {
@@ -264,9 +347,10 @@ export default {
 .profile-image-wrapper {
   width: 200px;
   height: 200px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
-  background: #f3f4f6;
+  background: var(--color-bg-tertiary);
+  box-shadow: var(--shadow-sm);
 }
 
 .profile-image,
@@ -280,25 +364,26 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e5e7eb;
+  background: var(--color-border);
 }
 
 .edit-button {
   padding: 12px 24px;
-  background: #FF8C00;
-  color: #ffffff;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 500;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-base);
   width: fit-content;
 }
 
 .edit-button:hover {
-  background: #e67e00;
+  background: var(--color-accent-dark);
   transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 140, 0, 0.3);
 }
 
 .profile-info {
@@ -418,39 +503,61 @@ export default {
 
 .btn-primary {
   padding: 12px 24px;
-  background: #00CED1;
-  color: #ffffff;
+  background: var(--color-teal);
+  color: var(--color-white);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover {
-  background: #00a8b0;
+  background: var(--color-teal-dark);
   transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-outline {
   padding: 12px 24px;
   background: transparent;
-  color: #00CED1;
-  border: 2px solid #00CED1;
-  border-radius: 8px;
+  color: var(--color-teal);
+  border: 2px solid var(--color-teal);
+  border-radius: var(--radius-md);
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-base);
 }
 
 .btn-outline:hover {
-  background: #00CED1;
-  color: #ffffff;
+  background: var(--color-teal);
+  color: var(--color-white);
+  transform: translateY(-1px);
 }
 
-.no-tariff,
+.no-tariff {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.no-tariff p {
+  margin: 0;
+  font-size: 16px;
+}
+
+.no-tariff .btn-primary {
+  width: 100%;
+  max-width: 300px;
+}
+
 .no-doctor {
   padding: 20px;
   text-align: center;
@@ -520,6 +627,23 @@ export default {
 }
 
 @media (max-width: 968px) {
+  .profile-header {
+    position: relative;
+    padding-bottom: 60px;
+  }
+
+  .btn-logout {
+    position: absolute;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    transform: none;
+  }
+
+  .btn-logout:hover {
+    transform: translateY(-1px);
+  }
+
   .profile-content {
     grid-template-columns: 1fr;
   }
