@@ -1,0 +1,10 @@
+{
+  "//": "Ensure SPA routing works for all client-side routes like /login, /patient/profile, etc.",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ]
+}
+
